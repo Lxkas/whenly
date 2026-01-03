@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
-import { ThemeProvider } from "@/components/theme-provider";
+import { ThemeProvider } from "@/components/providers/theme-provider";
+import { ReactQueryClientProvider } from "@/components/providers/reactquery-client-provider";
 
 const jetbrainsMono = JetBrains_Mono({ subsets: ["latin"], variable: "--font-sans" });
 
@@ -22,12 +23,14 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
 	return (
-		<html lang="en" className={jetbrainsMono.variable} suppressHydrationWarning>
-			<body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
-				<ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
-					{children}
-				</ThemeProvider>
-			</body>
-		</html>
+		<ReactQueryClientProvider>
+			<html lang="en" className={jetbrainsMono.variable} suppressHydrationWarning>
+				<body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+					<ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
+						{children}
+					</ThemeProvider>
+				</body>
+			</html>
+		</ReactQueryClientProvider>
 	);
 }
