@@ -17,8 +17,16 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-	title: "Whenly",
-	description: "Very Cool App!"
+	title: {
+		default: "Whenly",
+		template: "%s · Whenly"
+	},
+	description: "Track, share, and coordinate your availability.",
+
+	applicationName: "Whenly",
+	authors: [{ name: "Whenly" }],
+	generator: "Next.js",
+	keywords: ["availability", "time tracking", "scheduling", "calendar", "productivity", "team availability", "Whenly"]
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
