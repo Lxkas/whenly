@@ -9,121 +9,121 @@ import { SelectionToolbar } from "./selection-toolbar";
 import type { Event, Participant, Availability } from "@/lib/supabase/types";
 
 interface MonthViewProps {
-    event: Event;
-    validDates: Date[] | { start: Date; end: Date } | null;
-    participants: (Participant & { availability: Availability[] })[];
-    currentParticipantId?: string;
-    isHost?: boolean;
+	event: Event;
+	validDates: Date[] | { start: Date; end: Date } | null;
+	participants: (Participant & { availability: Availability[] })[];
+	currentParticipantId?: string;
+	isHost?: boolean;
 }
 
 const WEEKDAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 export function MonthView({ event, validDates, participants, currentParticipantId }: MonthViewProps) {
-    const { currentDate, endDayDrag, isDraggingDays, selectedDays, dragStartDay, toggleDaySelection } =
-        useCalendarStore();
-    const days = getCalendarDays(currentDate);
+	const { currentDate, endDayDrag, isDraggingDays, selectedDays, dragStartDay, toggleDaySelection } =
+		useCalendarStore();
+	const days = getCalendarDays(currentDate);
 
-    // handle global mouse up to end drag
-    useEffect(() => {
-        const handleGlobalMouseUp = () => {
-            if (isDraggingDays) {
-                // remember the drag start day before ending
-                const startDay = dragStartDay;
-                const wasDrag = endDayDrag();
+	// handle global mouse up to end drag
+	useEffect(() => {
+		const handleGlobalMouseUp = () => {
+			if (isDraggingDays) {
+				// remember the drag start day before ending
+				const startDay = dragStartDay;
+				const wasDrag = endDayDrag();
 
-                // if it wasn't a drag (just a click), toggle the day
-                if (!wasDrag && startDay) {
-                    toggleDaySelection(startDay);
-                }
-            }
-        };
+				// if it wasn't a drag (just a click), toggle the day
+				if (!wasDrag && startDay) {
+					toggleDaySelection(startDay);
+				}
+			}
+		};
 
-        window.addEventListener("mouseup", handleGlobalMouseUp);
-        return () => window.removeEventListener("mouseup", handleGlobalMouseUp);
-    }, [isDraggingDays, endDayDrag, dragStartDay, toggleDaySelection]);
+		window.addEventListener("mouseup", handleGlobalMouseUp);
+		return () => window.removeEventListener("mouseup", handleGlobalMouseUp);
+	}, [isDraggingDays, endDayDrag, dragStartDay, toggleDaySelection]);
 
-    const isDateValid = useCallback(
-        (date: Date): boolean => {
-            if (!validDates) return false;
+	const isDateValid = useCallback(
+		(date: Date): boolean => {
+			if (!validDates) return false;
 
-            if (Array.isArray(validDates)) {
-                return validDates.some((d) => isSameDay(d, date));
-            }
+			if (Array.isArray(validDates)) {
+				return validDates.some((d) => isSameDay(d, date));
+			}
 
-            return isDateInRange(date, validDates.start, validDates.end);
-        },
-        [validDates]
-    );
+			return isDateInRange(date, validDates.start, validDates.end);
+		},
+		[validDates]
+	);
 
-    const getAvailabilityForDay = useCallback(
-        (date: Date) => {
-            const dayStart = new Date(date);
-            dayStart.setHours(0, 0, 0, 0);
-            const dayEnd = new Date(date);
-            dayEnd.setHours(23, 59, 59, 999);
+	const getAvailabilityForDay = useCallback(
+		(date: Date) => {
+			const dayStart = new Date(date);
+			dayStart.setHours(0, 0, 0, 0);
+			const dayEnd = new Date(date);
+			dayEnd.setHours(23, 59, 59, 999);
 
-            const participantsWithAvailability = participants.filter((p) =>
-                p.availability.some((a) => {
-                    const slotStart = new Date(a.slot_start);
-                    return slotStart >= dayStart && slotStart <= dayEnd;
-                })
-            );
+			const participantsWithAvailability = participants.filter((p) =>
+				p.availability.some((a) => {
+					const slotStart = new Date(a.slot_start);
+					return slotStart >= dayStart && slotStart <= dayEnd;
+				})
+			);
 
-            return participantsWithAvailability;
-        },
-        [participants]
-    );
+			return participantsWithAvailability;
+		},
+		[participants]
+	);
 
-    // filter selected days to only valid ones
-    const validSelectedDays = selectedDays.filter(isDateValid);
+	// filter selected days to only valid ones
+	const validSelectedDays = selectedDays.filter(isDateValid);
 
-    return (
-        <div className="w-full relative pb-16">
-            <MonthHeader />
+	return (
+		<div className="relative w-full pb-16">
+			<MonthHeader />
 
-            {/* weekday headers */}
-            <div className="grid grid-cols-7 gap-1 mb-1">
-                {WEEKDAY_NAMES.map((name) => (
-                    <div key={name} className="text-center text-xs text-muted-foreground py-2">
-                        {name}
-                    </div>
-                ))}
-            </div>
+			{/* weekday headers */}
+			<div className="mb-1 grid grid-cols-7 gap-1">
+				{WEEKDAY_NAMES.map((name) => (
+					<div key={name} className="text-muted-foreground py-2 text-center text-xs">
+						{name}
+					</div>
+				))}
+			</div>
 
-            {/* calendar grid */}
-            <div className="grid grid-cols-7 gap-1">
-                {days.map((day) => {
-                    const isCurrentMonth = isSameMonth(day, currentDate);
-                    const isValid = isDateValid(day);
-                    const availableParticipants = getAvailabilityForDay(day);
+			{/* calendar grid */}
+			<div className="grid grid-cols-7 gap-1">
+				{days.map((day) => {
+					const isCurrentMonth = isSameMonth(day, currentDate);
+					const isValid = isDateValid(day);
+					const availableParticipants = getAvailabilityForDay(day);
 
-                    return (
-                        <MonthDayCell
-                            key={day.toISOString()}
-                            date={day}
-                            isCurrentMonth={isCurrentMonth}
-                            isValid={isValid}
-                            availableParticipants={availableParticipants}
-                            totalParticipants={participants.length}
-                        />
-                    );
-                })}
-            </div>
+					return (
+						<MonthDayCell
+							key={day.toISOString()}
+							date={day}
+							isCurrentMonth={isCurrentMonth}
+							isValid={isValid}
+							availableParticipants={availableParticipants}
+							totalParticipants={participants.length}
+						/>
+					);
+				})}
+			</div>
 
-            {/* instructions */}
-            <div className="mt-4 text-xs text-muted-foreground text-center space-y-1">
-                <p>Click or drag to select days, double-click to view details</p>
-                {!currentParticipantId && <p>Join the event to add your availability</p>}
-            </div>
+			{/* instructions */}
+			<div className="text-muted-foreground mt-4 space-y-1 text-center text-xs">
+				<p>Click or drag to select days, double-click to view details</p>
+				{!currentParticipantId && <p>Join the event to add your availability</p>}
+			</div>
 
-            {/* selection toolbar - positioned at bottom to avoid layout shift */}
-            {validSelectedDays.length > 0 && currentParticipantId && (
-                <SelectionToolbar
-                    selectedDays={validSelectedDays}
-                    event={event}
-                    currentParticipantId={currentParticipantId}
-                />
-            )}
-        </div>
-    );
+			{/* selection toolbar - positioned at bottom to avoid layout shift */}
+			{validSelectedDays.length > 0 && currentParticipantId && (
+				<SelectionToolbar
+					selectedDays={validSelectedDays}
+					event={event}
+					currentParticipantId={currentParticipantId}
+				/>
+			)}
+		</div>
+	);
 }

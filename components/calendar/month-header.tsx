@@ -7,17 +7,17 @@ import { HugeiconsIcon } from "@hugeicons/react";
 import { ArrowLeft01Icon, ArrowRight01Icon } from "@hugeicons/core-free-icons";
 
 export function MonthHeader() {
-    const { currentDate, goToNextMonth, goToPrevMonth } = useCalendarStore();
+	const { currentDate, goToNextMonth, goToPrevMonth } = useCalendarStore();
 
-    return (
-        <div className="flex items-center justify-between mb-4">
-            <Button variant="ghost" size="icon-sm" onClick={goToPrevMonth}>
-                <HugeiconsIcon icon={ArrowLeft01Icon} className="size-4" />
-            </Button>
-            <h2 className="text-lg font-semibold">{getMonthName(currentDate)}</h2>
-            <Button variant="ghost" size="icon-sm" onClick={goToNextMonth}>
-                <HugeiconsIcon icon={ArrowRight01Icon} className="size-4" />
-            </Button>
-        </div>
-    );
+	return (
+		<div className="mb-4 flex items-center justify-between">
+			<Button variant="ghost" size="icon-sm" onClick={goToPrevMonth}>
+				<HugeiconsIcon icon={ArrowLeft01Icon} className="size-4" />
+			</Button>
+			<h2 className="text-lg font-semibold">{getMonthName(currentDate)}</h2>
+			<Button variant="ghost" size="icon-sm" onClick={goToNextMonth}>
+				<HugeiconsIcon icon={ArrowRight01Icon} className="size-4" />
+			</Button>
+		</div>
+	);
 }

@@ -7,13 +7,13 @@ const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY!;
 let client: ReturnType<typeof createBrowserClient> | undefined;
 
 function getSupabaseBrowserClient() {
-    if (client) return client;
-    client = createBrowserClient(supabaseUrl, supabaseKey);
-    return client;
+	if (client) return client;
+	client = createBrowserClient(supabaseUrl, supabaseKey);
+	return client;
 }
 
 export function useSupabaseBrowser() {
-    return useMemo(getSupabaseBrowserClient, []);
+	return useMemo(getSupabaseBrowserClient, []);
 }
 
 export const createClient = () => createBrowserClient(supabaseUrl, supabaseKey);

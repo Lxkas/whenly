@@ -7,18 +7,18 @@ import { HugeiconsIcon } from "@hugeicons/react";
 import { ArrowLeft01Icon } from "@hugeicons/core-free-icons";
 
 interface DayHeaderProps {
-    day: Date;
+	day: Date;
 }
 
 export function DayHeader({ day }: DayHeaderProps) {
-    const { closeDay } = useCalendarStore();
+	const { closeDay } = useCalendarStore();
 
-    return (
-        <div className="flex items-center gap-3 mb-4">
-            <Button variant="ghost" size="icon-sm" onClick={closeDay}>
-                <HugeiconsIcon icon={ArrowLeft01Icon} className="size-4" />
-            </Button>
-            <h2 className="text-lg font-semibold">{getDayName(day)}</h2>
-        </div>
-    );
+	return (
+		<div className="mb-4 flex items-center gap-3">
+			<Button variant="ghost" size="icon-sm" onClick={closeDay}>
+				<HugeiconsIcon icon={ArrowLeft01Icon} className="size-4" />
+			</Button>
+			<h2 className="text-lg font-semibold">{getDayName(day)}</h2>
+		</div>
+	);
 }
