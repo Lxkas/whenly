@@ -41,14 +41,7 @@ function blocksOverlap(a: NewAvailabilityBlock, b: NewAvailabilityBlock): boolea
 	return a.start < b.end && a.end > b.start;
 }
 
-export function AddBlockDialog({
-	open,
-	onOpenChange,
-	day,
-	timeRange,
-	existingBlocks,
-	onSave
-}: AddBlockDialogProps) {
+export function AddBlockDialog({ open, onOpenChange, day, timeRange, existingBlocks, onSave }: AddBlockDialogProps) {
 	const [startTime, setStartTime] = useState("09:00");
 	const [endTime, setEndTime] = useState("10:00");
 	const [error, setError] = useState<string | null>(null);
@@ -108,9 +101,7 @@ export function AddBlockDialog({
 			<DialogContent className="sm:max-w-[400px]">
 				<DialogHeader>
 					<DialogTitle>Add Availability</DialogTitle>
-					<DialogDescription>
-						Add your available time on {format(day, "EEEE, MMMM d")}.
-					</DialogDescription>
+					<DialogDescription>Add your available time on {format(day, "EEEE, MMMM d")}.</DialogDescription>
 				</DialogHeader>
 
 				<div className="grid gap-4 py-4">
