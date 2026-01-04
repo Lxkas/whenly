@@ -95,20 +95,27 @@ export function SelectionToolbar({ selectedDays, event, currentParticipantId }: 
 
 	return (
 		<div className="bg-background/95 supports-[backdrop-filter]:bg-background/80 animate-in slide-in-from-bottom-2 absolute right-0 bottom-0 left-0 rounded-lg border p-3 shadow-lg backdrop-blur duration-200">
-			<div className="flex flex-wrap items-center justify-between gap-4">
-				<div className="text-sm">
-					<span className="font-medium">{selectedDays.length}</span> day
-					{selectedDays.length !== 1 ? "s" : ""} selected
-					{selectedDays.length <= 3 && (
-						<span className="text-muted-foreground ml-2">
-							({selectedDays.map((d) => format(d, "MMM d")).join(", ")})
-						</span>
-					)}
+			<div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-4">
+				{/* header row with count and close button */}
+				<div className="flex items-center justify-between">
+					<div className="text-sm">
+						<span className="font-medium">{selectedDays.length}</span> day
+						{selectedDays.length !== 1 ? "s" : ""} selected
+						{selectedDays.length <= 3 && (
+							<span className="text-muted-foreground ml-2 hidden sm:inline">
+								({selectedDays.map((d) => format(d, "MMM d")).join(", ")})
+							</span>
+						)}
+					</div>
+					<Button variant="ghost" size="icon-sm" onClick={clearDaySelection} className="sm:hidden">
+						<HugeiconsIcon icon={Cancel01Icon} className="size-4" />
+					</Button>
 				</div>
 
-				<div className="flex items-center gap-2">
+				{/* action buttons - stack on mobile, inline on desktop */}
+				<div className="flex flex-col gap-2 sm:flex-row sm:items-center">
 					{selectedDays.length === 1 && (
-						<Button variant="outline" size="sm" onClick={handleViewDetails}>
+						<Button variant="outline" size="sm" onClick={handleViewDetails} className="w-full sm:w-auto">
 							View Details
 						</Button>
 					)}
@@ -118,9 +125,10 @@ export function SelectionToolbar({ selectedDays, event, currentParticipantId }: 
 						size="sm"
 						onClick={() => markAllDayMutation.mutate()}
 						disabled={isPending}
+						className="w-full sm:w-auto"
 					>
 						<HugeiconsIcon icon={Clock01Icon} className="mr-1 size-4" />
-						{isPending ? "Saving..." : "Mark All Day Available"}
+						{isPending ? "Saving..." : "Mark All Day"}
 					</Button>
 
 					<Button
@@ -128,11 +136,12 @@ export function SelectionToolbar({ selectedDays, event, currentParticipantId }: 
 						size="sm"
 						onClick={() => clearAvailabilityMutation.mutate()}
 						disabled={isPending}
+						className="w-full sm:w-auto"
 					>
 						Clear Availability
 					</Button>
 
-					<Button variant="ghost" size="icon-sm" onClick={clearDaySelection}>
+					<Button variant="ghost" size="icon-sm" onClick={clearDaySelection} className="hidden sm:flex">
 						<HugeiconsIcon icon={Cancel01Icon} className="size-4" />
 					</Button>
 				</div>

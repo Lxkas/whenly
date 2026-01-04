@@ -1,10 +1,15 @@
 "use client";
 
-import { useRef, useCallback, useMemo, useEffect } from "react";
+import { useRef, useCallback, useMemo, useEffect, useState } from "react";
 import { useSelectionStore } from "@/stores/selection-store";
 import { useUpdateAvailability, useSaveAvailability } from "@/hooks/use-availability";
+import { useTouchDevice } from "@/hooks/use-touch-device";
 import { formatTimeShort, setTimeOnDate } from "@/lib/date-utils";
 import { AvailabilityLayer } from "./availability-layer";
+import { AddBlockDialog } from "./add-block-dialog";
+import { Button } from "@/components/ui/button";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { Add01Icon } from "@hugeicons/core-free-icons";
 import { cn } from "@/lib/utils";
 import type { Event, Participant, Availability } from "@/lib/supabase/types";
 import type { NewAvailabilityBlock } from "@/types";
@@ -20,8 +25,20 @@ interface TimeGridProps {
 
 const HOUR_HEIGHT = 60; // pixels per hour
 
+// helper to get clientY from mouse or touch event
+function getClientY(e: MouseEvent | TouchEvent | React.MouseEvent | React.TouchEvent): number {
+	if ("touches" in e) {
+		return e.touches[0]?.clientY ?? e.changedTouches[0]?.clientY ?? 0;
+	}
+	return e.clientY;
+}
+
 export function TimeGrid({ event, day, participants, currentParticipantId, timeRange }: TimeGridProps) {
 	const gridRef = useRef<HTMLDivElement>(null);
+	const isTouchDevice = useTouchDevice();
+	const [addDialogOpen, setAddDialogOpen] = useState(false);
+	const [dragGridTop, setDragGridTop] = useState<number | null>(null);
+
 	const {
 		isDragging,
 		dragStart,
@@ -104,62 +121,83 @@ export function TimeGrid({ event, day, participants, currentParticipantId, timeR
 		[day, startHour, totalHours]
 	);
 
+	// mouse-only handler for creating new blocks via drag (disabled on touch devices)
 	const handleMouseDown = useCallback(
 		(e: React.MouseEvent) => {
 			if (!currentParticipantId) return;
-			// only start new drag if not already editing a block
 			if (editMode) return;
-			const time = yToTime(e.clientY);
-			startDrag(e.clientY, time);
+			// on touch devices, use the dialog instead of drag
+			if (isTouchDevice) return;
+
+			// capture grid position at drag start for preview calculation
+			if (gridRef.current) {
+				setDragGridTop(gridRef.current.getBoundingClientRect().top);
+			}
+
+			const clientY = e.clientY;
+			const time = yToTime(clientY);
+			startDrag(clientY, time);
 		},
-		[currentParticipantId, yToTime, startDrag, editMode]
+		[currentParticipantId, yToTime, startDrag, editMode, isTouchDevice]
 	);
 
 	const handleMouseMove = useCallback(
 		(e: React.MouseEvent) => {
-			const time = yToTime(e.clientY);
+			const clientY = e.clientY;
+			const time = yToTime(clientY);
 
-			// handle block editing (move/resize)
+			// handle block editing (move/resize) - works on all devices
 			if (editMode) {
-				updateEditBlock(e.clientY, time, gridStartTime, gridEndTime, currentUserBlocks);
+				updateEditBlock(clientY, time, gridStartTime, gridEndTime, currentUserBlocks);
 				return;
 			}
 
-			// handle creating new block
-			if (isDragging) {
-				updateDrag(e.clientY, time, currentUserBlocks);
+			// handle creating new block (mouse only)
+			if (isDragging && !isTouchDevice) {
+				updateDrag(clientY, time, currentUserBlocks);
 			}
 		},
-		[isDragging, editMode, yToTime, updateDrag, updateEditBlock, gridStartTime, gridEndTime, currentUserBlocks]
+		[
+			isDragging,
+			editMode,
+			yToTime,
+			updateDrag,
+			updateEditBlock,
+			gridStartTime,
+			gridEndTime,
+			currentUserBlocks,
+			isTouchDevice
+		]
 	);
 
-	// global mouse handlers for smooth dragging even outside the grid
-	// we use global handlers exclusively to avoid double-handling
+	// handler for saving blocks created via dialog (mobile)
+	const handleAddBlock = useCallback(
+		(newBlock: NewAvailabilityBlock) => {
+			if (!currentParticipantId) return;
+
+			saveAvailability.mutate({
+				participantId: currentParticipantId,
+				eventId: event.id,
+				eventSlug: event.slug,
+				blocks: [...currentUserBlocks.map((b) => ({ start: b.start, end: b.end })), newBlock],
+				day
+			});
+		},
+		[currentParticipantId, event.id, event.slug, currentUserBlocks, day, saveAvailability]
+	);
+
+	// global mouse handlers for drag-to-create (mouse only, not touch)
 	useEffect(() => {
-		if (!editMode && !isDragging) return;
+		if (!isDragging || isTouchDevice) return;
 
 		const handleGlobalMouseMove = (e: MouseEvent) => {
-			const time = yToTime(e.clientY);
-
-			if (editMode) {
-				updateEditBlock(e.clientY, time, gridStartTime, gridEndTime, currentUserBlocks);
-			} else if (isDragging) {
-				updateDrag(e.clientY, time, currentUserBlocks);
-			}
+			const clientY = e.clientY;
+			const time = yToTime(clientY);
+			updateDrag(clientY, time, currentUserBlocks);
 		};
 
 		const handleGlobalMouseUp = () => {
-			if (editMode) {
-				const result = endEditBlock();
-				if (result && result.block) {
-					updateAvailability.mutate({
-						id: result.id,
-						eventSlug: event.slug,
-						slotStart: result.block.start,
-						slotEnd: result.block.end
-					});
-				}
-			} else if (isDragging && currentParticipantId) {
+			if (isDragging && currentParticipantId) {
 				const newBlock = endDrag(currentUserBlocks);
 				if (newBlock) {
 					saveAvailability.mutate({
@@ -181,20 +219,66 @@ export function TimeGrid({ event, day, participants, currentParticipantId, timeR
 			window.removeEventListener("mouseup", handleGlobalMouseUp);
 		};
 	}, [
-		editMode,
 		isDragging,
+		isTouchDevice,
 		yToTime,
-		updateEditBlock,
 		updateDrag,
-		endEditBlock,
 		endDrag,
-		updateAvailability,
 		saveAvailability,
 		event.slug,
 		event.id,
 		currentParticipantId,
 		currentUserBlocks,
-		day,
+		day
+	]);
+
+	// global handlers for block editing (works on both mouse and touch)
+	useEffect(() => {
+		if (!editMode) return;
+
+		const handleGlobalMove = (e: MouseEvent | TouchEvent) => {
+			// prevent scrolling on touch devices while dragging
+			if (e.cancelable) {
+				e.preventDefault();
+			}
+			const clientY = getClientY(e);
+			const time = yToTime(clientY);
+			updateEditBlock(clientY, time, gridStartTime, gridEndTime, currentUserBlocks);
+		};
+
+		const handleGlobalEnd = () => {
+			const result = endEditBlock();
+			if (result && result.block) {
+				updateAvailability.mutate({
+					id: result.id,
+					eventSlug: event.slug,
+					slotStart: result.block.start,
+					slotEnd: result.block.end
+				});
+			}
+		};
+
+		window.addEventListener("mousemove", handleGlobalMove);
+		window.addEventListener("mouseup", handleGlobalEnd);
+		window.addEventListener("touchmove", handleGlobalMove, { passive: false });
+		window.addEventListener("touchend", handleGlobalEnd);
+		window.addEventListener("touchcancel", handleGlobalEnd);
+
+		return () => {
+			window.removeEventListener("mousemove", handleGlobalMove);
+			window.removeEventListener("mouseup", handleGlobalEnd);
+			window.removeEventListener("touchmove", handleGlobalMove);
+			window.removeEventListener("touchend", handleGlobalEnd);
+			window.removeEventListener("touchcancel", handleGlobalEnd);
+		};
+	}, [
+		editMode,
+		yToTime,
+		updateEditBlock,
+		endEditBlock,
+		updateAvailability,
+		event.slug,
+		currentUserBlocks,
 		gridStartTime,
 		gridEndTime
 	]);
@@ -210,24 +294,26 @@ export function TimeGrid({ event, day, participants, currentParticipantId, timeR
 		return () => window.removeEventListener("keydown", handleKeyDown);
 	}, [editMode, cancelEditBlock]);
 
-	// calculate drag preview position
-	const getDragPreviewStyle = () => {
-		if (!isDragging || !dragStart || !dragEnd || !gridRef.current) return null;
-		const rect = gridRef.current.getBoundingClientRect();
-		const top = Math.min(dragStart.y, dragEnd.y) - rect.top;
+	// calculate drag preview position using grid top captured at drag start
+	const dragPreview = useMemo(() => {
+		if (!isDragging || !dragStart || !dragEnd || dragGridTop === null) {
+			return null;
+		}
+		const top = Math.min(dragStart.y, dragEnd.y) - dragGridTop;
 		const height = Math.abs(dragEnd.y - dragStart.y);
 		return { top, height };
-	};
-
-	const dragPreview = getDragPreviewStyle();
+	}, [isDragging, dragStart, dragEnd, dragGridTop]);
 
 	return (
 		<div className="relative">
 			{/* time labels */}
 			<div className="flex">
-				<div className="w-16 flex-shrink-0">
+				<div className="w-10 shrink-0 sm:w-16">
 					{hours.map((hour) => (
-						<div key={hour} className="text-muted-foreground h-[60px] pr-2 text-right text-xs">
+						<div
+							key={hour}
+							className="text-muted-foreground h-15 pr-1 text-right text-[10px] sm:pr-2 sm:text-xs"
+						>
 							{formatTimeShort(setTimeOnDate(new Date(), hour, 0))}
 						</div>
 					))}
@@ -238,7 +324,10 @@ export function TimeGrid({ event, day, participants, currentParticipantId, timeR
 					ref={gridRef}
 					className={cn(
 						"bg-muted/20 relative flex-1 rounded-md border",
-						currentParticipantId && "cursor-crosshair"
+						// only show crosshair cursor on non-touch devices
+						currentParticipantId && !isTouchDevice && "cursor-crosshair",
+						// prevent scrolling while editing blocks on touch devices
+						editMode && "touch-none"
 					)}
 					style={{ height: totalHours * HOUR_HEIGHT }}
 					onMouseDown={handleMouseDown}
@@ -262,8 +351,8 @@ export function TimeGrid({ event, day, participants, currentParticipantId, timeR
 						currentParticipantId={currentParticipantId}
 					/>
 
-					{/* drag preview */}
-					{dragPreview && (
+					{/* drag preview (desktop only) */}
+					{dragPreview && !isTouchDevice && (
 						<div
 							className="bg-primary/30 border-primary pointer-events-none absolute right-0 left-0 rounded border"
 							style={{
@@ -275,10 +364,22 @@ export function TimeGrid({ event, day, participants, currentParticipantId, timeR
 				</div>
 			</div>
 
+			{/* add button for mobile */}
+			{currentParticipantId && isTouchDevice && (
+				<Button variant="outline" className="mt-3 w-full" onClick={() => setAddDialogOpen(true)}>
+					<HugeiconsIcon icon={Add01Icon} className="mr-2 size-4" />
+					Add Time Slot
+				</Button>
+			)}
+
 			{/* instructions */}
 			{currentParticipantId && (
 				<p className="text-muted-foreground mt-2 text-center text-xs">
-					Drag to add availability • Drag blocks to move • Double-click to edit
+					{isTouchDevice ? (
+						<>Tap button above to add • Long-press blocks to edit</>
+					) : (
+						<>Drag to add availability • Drag blocks to move • Double-click to edit</>
+					)}
 				</p>
 			)}
 
@@ -287,6 +388,16 @@ export function TimeGrid({ event, day, participants, currentParticipantId, timeR
 					Join the event to add your availability
 				</p>
 			)}
+
+			{/* add block dialog (mobile) */}
+			<AddBlockDialog
+				open={addDialogOpen}
+				onOpenChange={setAddDialogOpen}
+				day={day}
+				timeRange={timeRange}
+				existingBlocks={currentUserBlocks}
+				onSave={handleAddBlock}
+			/>
 		</div>
 	);
 }

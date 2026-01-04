@@ -23,24 +23,32 @@ export function MonthView({ event, validDates, participants, currentParticipantI
 		useCalendarStore();
 	const days = getCalendarDays(currentDate);
 
-	// handle global mouse up to end drag
+	// handle global mouse up to end drag (for desktop)
+	// touch events are handled directly by MonthDayCell for better reliability
 	useEffect(() => {
-		const handleGlobalMouseUp = () => {
-			if (isDraggingDays) {
+		const handleMouseUp = () => {
+			const state = useCalendarStore.getState();
+			// ignore synthetic mouse events after touch
+			if (state.shouldIgnoreMouseEvent()) return;
+
+			if (state.isDraggingDays) {
 				// remember the drag start day before ending
-				const startDay = dragStartDay;
-				const wasDrag = endDayDrag();
+				const startDay = state.dragStartDay;
+				const wasDrag = state.endDayDrag();
 
 				// if it wasn't a drag (just a click), toggle the day
 				if (!wasDrag && startDay) {
-					toggleDaySelection(startDay);
+					state.toggleDaySelection(startDay);
 				}
 			}
 		};
 
-		window.addEventListener("mouseup", handleGlobalMouseUp);
-		return () => window.removeEventListener("mouseup", handleGlobalMouseUp);
-	}, [isDraggingDays, endDayDrag, dragStartDay, toggleDaySelection]);
+		window.addEventListener("mouseup", handleMouseUp);
+
+		return () => {
+			window.removeEventListener("mouseup", handleMouseUp);
+		};
+	}, []);
 
 	const isDateValid = useCallback(
 		(date: Date): boolean => {
@@ -112,7 +120,8 @@ export function MonthView({ event, validDates, participants, currentParticipantI
 
 			{/* instructions */}
 			<div className="text-muted-foreground mt-4 space-y-1 text-center text-xs">
-				<p>Click or drag to select days, double-click to view details</p>
+				<p className="hidden sm:block">Click or drag to select days, double-click to view details</p>
+				<p className="sm:hidden">Tap or drag to select days, long-press to view details</p>
 				{!currentParticipantId && <p>Join the event to add your availability</p>}
 			</div>
 

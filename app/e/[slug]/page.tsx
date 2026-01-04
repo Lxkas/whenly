@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import { useEvent } from "@/hooks/use-event";
 import { useRealtimeEvent } from "@/hooks/use-realtime-event";
@@ -19,38 +19,52 @@ export default function EventPage() {
 	const slug = params.slug as string;
 	const { data: event, isLoading, error } = useEvent(slug);
 
-	const [isHost, setIsHost] = useState(false);
-	const [currentParticipantId, setCurrentParticipantId] = useState<string | undefined>();
+	// track participant id set immediately after joining (before event refetches)
+	const [joinedParticipantId, setJoinedParticipantId] = useState<string>();
 
 	// enable real-time updates
 	useRealtimeEvent(event?.id || "", slug);
 
-	// check if user is host or participant
-	useEffect(() => {
-		if (!event) return;
-
+	// compute isHost from event data (derived state, not effect)
+	const isHost = useMemo(() => {
+		if (!event) return false;
 		const hostToken = getHostToken(event.id);
-		if (hostToken && hostToken === event.host_token) {
-			setIsHost(true);
+		return !!(hostToken && hostToken === event.host_token);
+	}, [event]);
+
+	// compute currentParticipantId from event data or joinedParticipantId
+	const currentParticipantId = useMemo(() => {
+		// use joinedParticipantId if set (bridges gap before event refetches)
+		if (joinedParticipantId) {
+			// verify the participant exists in event data (if available)
+			if (event) {
+				const participant = event.participants.find((p) => p.id === joinedParticipantId);
+				if (participant) return participant.id;
+			}
+			// event hasn't refetched yet, trust the joined id
+			return joinedParticipantId;
 		}
+
+		if (!event) return undefined;
 
 		const participantToken = getParticipantToken(event.id);
-		if (participantToken) {
-			// verify the participant still exists
-			const participant = event.participants.find((p) => p.id === participantToken.participantId);
-			if (participant && participant.token === participantToken.token) {
-				setCurrentParticipantId(participant.id);
-			}
+		if (!participantToken) return undefined;
+
+		// verify the participant still exists
+		const participant = event.participants.find((p) => p.id === participantToken.participantId);
+		if (participant && participant.token === participantToken.token) {
+			return participant.id;
 		}
-	}, [event]);
+		return undefined;
+	}, [event, joinedParticipantId]);
 
 	if (isLoading) {
 		return (
-			<main className="mx-auto min-h-screen max-w-6xl p-4 md:p-8">
+			<main className="mx-auto min-h-screen max-w-6xl p-4">
 				<div className="space-y-4">
 					<Skeleton className="h-10 w-64" />
 					<Skeleton className="h-4 w-96" />
-					<Skeleton className="h-[400px] w-full" />
+					<Skeleton className="h-100 w-full" />
 				</div>
 			</main>
 		);
@@ -69,24 +83,23 @@ export default function EventPage() {
 
 	const handleJoined = () => {
 		// the participant token was stored in the mutation
-		// we need to refresh to get it
+		// set joinedParticipantId to immediately show as participant (before event refetches)
 		const participantToken = getParticipantToken(event.id);
 		if (participantToken) {
-			setCurrentParticipantId(participantToken.participantId);
+			setJoinedParticipantId(participantToken.participantId);
 		}
 	};
 
 	return (
-		<main className="mx-auto min-h-screen max-w-6xl p-4 md:p-8">
-			<div className="absolute top-4 right-4">
-				<ThemeToggler />
-			</div>
-
+		<main className="mx-auto min-h-screen max-w-6xl p-4">
 			<div className="space-y-6">
 				{/* header */}
-				<div className="flex items-start justify-between gap-4">
+				<div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
 					<EventHeader event={event} isHost={isHost} />
-					{isHost && <FinalizeDialog event={event} />}
+					<div className="flex items-center gap-2">
+						{isHost && <FinalizeDialog event={event} />}
+						<ThemeToggler />
+					</div>
 				</div>
 
 				<Separator />

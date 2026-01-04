@@ -29,10 +29,10 @@ export function EventHeader({ event, isHost }: EventHeaderProps) {
 
 	return (
 		<div className="space-y-4">
-			<div className="flex items-start justify-between gap-4">
-				<div>
-					<div className="flex items-center gap-2">
-						<h1 className="text-2xl font-bold">{event.title}</h1>
+			<div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+				<div className="min-w-0 flex-1">
+					<div className="flex flex-wrap items-center gap-2">
+						<h1 className="truncate text-xl font-bold sm:text-2xl">{event.title}</h1>
 						{isHost && (
 							<Badge variant="outline" className="text-xs">
 								Host
@@ -42,12 +42,16 @@ export function EventHeader({ event, isHost }: EventHeaderProps) {
 							<Badge className="border-green-500/20 bg-green-500/10 text-green-500">Finalized</Badge>
 						)}
 					</div>
-					{event.description && <p className="text-muted-foreground mt-1">{event.description}</p>}
+					{event.description && (
+						<p className="text-muted-foreground mt-1 line-clamp-2 text-sm sm:text-base">
+							{event.description}
+						</p>
+					)}
 				</div>
 				<CopyLinkButton slug={event.slug} />
 			</div>
 
-			<div className="text-muted-foreground flex flex-wrap gap-4 text-sm">
+			<div className="text-muted-foreground flex flex-col gap-1 text-sm sm:flex-row sm:flex-wrap sm:gap-4">
 				<div>
 					<span className="font-medium">Dates:</span> {getDateRangeText()}
 				</div>

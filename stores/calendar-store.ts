@@ -11,6 +11,7 @@ interface CalendarState {
 	dragStartDay: Date | null;
 	preDragSelection: Date[]; // selection before drag started
 	hasDragged: boolean; // whether mouse moved during drag (to distinguish click vs drag)
+	lastTouchTime: number; // timestamp of last touch event (to ignore synthetic mouse events)
 
 	setCurrentDate: (date: Date) => void;
 	setSelectedDay: (date: Date | null) => void;
@@ -30,7 +31,14 @@ interface CalendarState {
 	clearDaySelection: () => void;
 	selectDays: (days: Date[]) => void;
 	isDaySelected: (date: Date) => boolean;
+
+	// touch/mouse event coordination
+	markTouchEvent: () => void;
+	shouldIgnoreMouseEvent: () => boolean;
 }
+
+// time window to ignore mouse events after touch (ms)
+const TOUCH_MOUSE_IGNORE_WINDOW = 500;
 
 export const useCalendarStore = create<CalendarState>((set, get) => ({
 	currentDate: new Date(),
@@ -41,6 +49,7 @@ export const useCalendarStore = create<CalendarState>((set, get) => ({
 	dragStartDay: null,
 	preDragSelection: [],
 	hasDragged: false,
+	lastTouchTime: 0,
 
 	setCurrentDate: (date) => set({ currentDate: date }),
 
@@ -157,5 +166,14 @@ export const useCalendarStore = create<CalendarState>((set, get) => ({
 	isDaySelected: (date) => {
 		const state = get();
 		return state.selectedDays.some((d) => isSameDay(d, date));
+	},
+
+	// mark that a touch event just occurred
+	markTouchEvent: () => set({ lastTouchTime: Date.now() }),
+
+	// check if we should ignore mouse events (because touch just happened)
+	shouldIgnoreMouseEvent: () => {
+		const state = get();
+		return Date.now() - state.lastTouchTime < TOUCH_MOUSE_IGNORE_WINDOW;
 	}
 }));

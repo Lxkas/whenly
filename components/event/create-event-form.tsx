@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -19,6 +19,20 @@ import { HugeiconsIcon } from "@hugeicons/react";
 import { Calendar01Icon } from "@hugeicons/core-free-icons";
 import { cn } from "@/lib/utils";
 import type { DateMode } from "@/types";
+
+// hook to detect mobile screen size for responsive calendar
+function useIsMobile() {
+	const [isMobile, setIsMobile] = useState(false);
+
+	useEffect(() => {
+		const checkMobile = () => setIsMobile(window.innerWidth < 640);
+		checkMobile();
+		window.addEventListener("resize", checkMobile);
+		return () => window.removeEventListener("resize", checkMobile);
+	}, []);
+
+	return isMobile;
+}
 
 const formSchema = z.object({
 	title: z.string().min(1, "Title is required"),
@@ -55,6 +69,7 @@ const TIME_OPTIONS = [
 export function CreateEventForm() {
 	const router = useRouter();
 	const createEvent = useCreateEvent();
+	const isMobile = useIsMobile();
 	const [dateMode, setDateMode] = useState<DateMode>("range");
 	const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
 	const [specificDates, setSpecificDates] = useState<Date[]>([]);
@@ -203,7 +218,7 @@ export function CreateEventForm() {
 										mode="range"
 										selected={dateRange}
 										onSelect={setDateRange}
-										numberOfMonths={2}
+										numberOfMonths={isMobile ? 1 : 2}
 										disabled={{ before: new Date() }}
 									/>
 								) : (
@@ -211,7 +226,7 @@ export function CreateEventForm() {
 										mode="multiple"
 										selected={specificDates}
 										onSelect={(dates) => setSpecificDates(dates || [])}
-										numberOfMonths={2}
+										numberOfMonths={isMobile ? 1 : 2}
 										disabled={{ before: new Date() }}
 									/>
 								)}
